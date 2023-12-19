@@ -1,0 +1,48 @@
+name: PR Regression
+on:
+  push:
+    branches:
+      - "main"
+jobs:
+  run-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.15.0
+      - name: Install Chrome
+        run: |
+          sudo apt-get update
+          sudo apt -f install -y
+          sudo wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          sudo apt-get install ./google-chrome-stable_current_amd64.deb -y
+        shell: bash
+      - name: Install Dependency
+        run: npm ci
+      - name: Run Regression Tests
+        run: npx wdio run ./wdio.conf.ts
+      - name: Check allure history branch
+        uses: actions/checkout@v4
+        with:
+          ref: 'allure-report'
+          path: allure-report
+      - name: Allure Reporter
+        uses: simple-elf/allure-report-action@master
+        if: always()
+        id: allure-report
+        with:
+          allure_results: allure-results
+          gh_pages: allure-report
+          allure_report: allure-report
+          allure_history: allure-history
+      - name: Deploy report to Github Pages
+        if: always()
+        uses: peaceiris/actions-gh-pages@v2
+        env:
+          PERSONAL_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUBLISH_BRANCH: allure-report
+          PUBLISH_DIR: allure-history
+
